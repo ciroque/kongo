@@ -196,9 +196,25 @@ type RegisteredK8sService struct {
 	Upstream *kong.Upstream
 }
 
+type KongNames struct {
+	UpstreamName string
+	ServiceName string
+	RouteName string
+}
+
+func NewKongNames(baseName string) *KongNames {
+	kongNames := new(KongNames)
+	kongNames.RouteName = strings.Join([]string{baseName, "service"}, "-")
+	kongNames.ServiceName = strings.Join([]string{baseName, "service"}, "-")
+	kongNames.UpstreamName = strings.Join([]string{baseName, "upstream"}, "-")
+	return kongNames
+}
+
 func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sService, error) {
+	kongNames := NewKongNames(k8sService.Name)
+
 	// 1 - Create Upstream
-	upstreamName := strings.Join([]string{k8sService.Name, "upstream"}, "-")
+	upstreamName := kongNames.UpstreamName
 	upstreamDef := UpstreamDef{Name: upstreamName}
 	kongUpstream, err := kongo.CreateUpstream(&upstreamDef)
 	if err != nil {
@@ -227,7 +243,7 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 	registeredK8sService.Targets = targets
 
 	// 3 - Create Service
-	serviceName := strings.Join([]string{k8sService.Name, "service"}, "-")
+	serviceName := kongNames.ServiceName
 	serviceDef := ServiceDef{
 		Name:     serviceName,
 		Host:     upstreamName,
@@ -242,7 +258,7 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 	registeredK8sService.Service = kongService
 
 	// 4 - Create Route
-	routeName := strings.Join([]string{k8sService.Name, "service"}, "-")
+	routeName := kongNames.RouteName
 	routeDef := RouteDef{
 		Name:      routeName,
 		Paths:     nil,
