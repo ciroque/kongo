@@ -106,6 +106,14 @@ type TargetDef struct {
 	Weight int
 }
 
+func NewTargetDef(target string, upstream *kong.Upstream, weight int) *TargetDef {
+	targetDef := new(TargetDef)
+	targetDef.Target = target
+	targetDef.Upstream = upstream
+	targetDef.Weight = weight
+	return targetDef
+}
+
 func (kongo *Kongo) CreateTarget(targetDef *TargetDef) (*kong.Target, error) {
 	kongTarget := kong.Target{
 		Target:    kong.String(targetDef.Target),
@@ -218,7 +226,9 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 	upstreamDef := UpstreamDef{Name: upstreamName}
 	kongUpstream, err := kongo.CreateUpstream(&upstreamDef)
 	if err != nil {
-		return nil, err
+		t := fmt.Errorf("error creating Upstream: %s", err)
+		fmt.Println(t)
+		return nil, t
 	}
 
 	// retval
@@ -235,7 +245,7 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 		}
 		kongTarget, err := kongo.CreateTarget(&targetDef)
 		if err != nil {
-			return &registeredK8sService, err
+			return &registeredK8sService, fmt.Errorf("error creating Target (%s): %s", *target, err)
 		}
 		targets = append(targets, kongTarget)
 	}
@@ -252,7 +262,7 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 	}
 	kongService, err := kongo.CreateService(&serviceDef)
 	if err != nil {
-		return &registeredK8sService, err
+		return &registeredK8sService, fmt.Errorf("error creating Service: %s", err)
 	}
 
 	registeredK8sService.Service = kongService
@@ -261,16 +271,96 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 	routeName := kongNames.RouteName
 	routeDef := RouteDef{
 		Name:      routeName,
-		Paths:     nil,
+		Paths:     kong.StringSlice(k8sService.Path),
 		Service:   kongService,
 		StripPath: false,
 	}
 	kongRoute, err := kongo.CreateRoute(&routeDef)
 	if err != nil {
-		return &registeredK8sService, err
+		fmt.Println("AWWWWW, THAT'S SAD. The Route could not be created", err)
+		return &registeredK8sService, fmt.Errorf("error creating Route: %s", err)
 	}
 
 	registeredK8sService.Route = kongRoute
 
 	return &registeredK8sService, nil
+}
+
+func (kongo *Kongo) DeleteAllTargets() error {
+	upstreams, err := kongo.ListUpstreams()
+	if err != nil {
+		return err
+	}
+
+	for _, upstream := range upstreams {
+		targets, err := kongo.ListTargets(*upstream.ID)
+		if err != nil {
+			return err
+		}
+		for _, target := range targets {
+			targetDef := NewTargetDef(*target.Target, upstream, 0)
+			_, err := kongo.DeleteTarget(targetDef)
+			if err != nil {
+				fmt.Println("Error deleting target:", upstream.Name, " : ", *target.Target)
+			}
+		}
+	}
+	
+	return nil
+}
+
+func (kongo *Kongo) DeleteAllUpstreams() error {
+	upstreams, err := kongo.ListUpstreams()
+	if err != nil {
+		return err
+	}
+
+	for _, upstream := range upstreams {
+		_, err = kongo.DeleteUpstream(*upstream.ID)
+		if err != nil {
+			fmt.Println("Error deleting Upstream: ", *upstream.Name, " - ", err)
+		}
+	}
+
+	return nil
+}
+
+func (kongo *Kongo) DeleteAllServices() error {
+	services, err := kongo.ListServices()
+	if err != nil {
+		return err
+	}
+
+	for _, service := range services {
+		_, err = kongo.DeleteService(*service.ID)
+		if err != nil {
+			fmt.Println("Error deleting Service: ", *service.Name, " - ", err)
+		}
+	}
+
+	return nil
+}
+
+func (kongo *Kongo) DeleteAllRoutes() error {
+	routes, err := kongo.ListRoutes()
+	if err != nil {
+		return err
+	}
+
+	for _, route := range routes {
+		_, err = kongo.DeleteRoute(*route.ID)
+		if err != nil {
+			fmt.Println("Error deleting Route: ", *route.Name, " - ", err)
+		}
+	}
+
+	return nil
+}
+
+func (kongo *Kongo) DeregisterK8sService(k8sService *K8sService) error {
+	kongNames := NewKongNames(k8sService.Name)
+
+	fmt.Println(kongNames)
+
+	return nil
 }

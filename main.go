@@ -21,72 +21,50 @@ func printUpstreams(upstreams []*kong.Upstream) {
 func main() {
 	baseUrl := "http://localhost:8001"
 	kongo, _ := kongClient.NewKongo(&baseUrl)
-	fmt.Println(kongo.GetVersion())
+	v, _ := kongo.GetVersion()
+	fmt.Println(*v)
 
-	services, _ := kongo.ListServices()
-	printServices(services)
 
-	fmt.Println("CREATING UPSTREAM")
-	upstreamDef := kongClient.UpstreamDef{Name: "orange-service-upstream"}
-	upstream, _ := kongo.CreateUpstream(&upstreamDef)
-	upstreamName := *upstream.Name
-	fmt.Println(upstreamName)
+	truncateKong(kongo)
+	generateTestThings(kongo)
+}
 
-	upstreams, _ := kongo.ListUpstreams()
-	printUpstreams(upstreams)
+func truncateKong(kongo *kongClient.Kongo) {
+	err := kongo.DeleteAllTargets()
+	if err != nil {
+		fmt.Println("Error deleting all Targets: ", err)
+	}
 
-	fmt.Println("DELETING UPSTREAM")
-	kongo.DeleteUpstream(upstreamName)
+	err = kongo.DeleteAllUpstreams()
+	if err != nil {
+		fmt.Println("Error deleting all Upstreams: ", err)
+	}
 
-	upstreams, _ = kongo.ListUpstreams()
-	printUpstreams(upstreams)
+	err = kongo.DeleteAllRoutes()
+	if err != nil {
+		fmt.Println("Error deleting all Routes: ", err)
+	}
 
-	//var ctx context.Context
-	//
-	//routes, _, err := kongClient.Routes.List(ctx, &opts)
-	//if err != nil {
-	//	fmt.Errorf("Bad Juju: %s", err)
-	//}
-	//fmt.Println("ROUTES: ", len(routes))
-	//
-	//for idx, route := range routes {
-	//	fmt.Printf("Route %i => %s: %s\n", idx, *route.ID, *route.Name)
-	//}
-	//
-	//services, _, err := kongClient.Services.List(ctx, &opts)
-	//if err != nil {
-	//	fmt.Errorf("Bad Juju: %s", err)
-	//}
-	//fmt.Println("SERVICES: ", len(services))
+	err = kongo.DeleteAllServices()
+	if err != nil {
+		fmt.Println("Error deleting all Streams: ", err)
+	}
+}
 
-	//orangeService := kong.Service{
-	//	Host:              kong.String("orange-service-upstream"),
-	//	Name:              kong.String("orange-service"),
-	//	Port:              kong.Int(8080),
-	//	Tags:              kong.StringSlice("app-services", "k8s-kong-federated-ingress"),
-	//}
-	//service, err := kongClient.Services.Create(ctx, &orangeService)
-	//if err != nil {
-	//	fmt.Errorf("Bad Juju: %s", err)
-	//}
-	//fmt.Println("CREATED SERVICE: ", service)
-	//
-	//orangeRoute := kong.Route{
-	//	Hosts:                   kong.StringSlice("10.235.33.199", "10.235.35.197", "10.235.45.91", "10.235.41.231"),
-	//	ID:                      kong.String("orange-service-ingress-route"),
-	//	Name:                    kong.String("orange-service-ingress-route"),
-	//	Methods:                 kong.StringSlice("GET"),
-	//	Paths:                   kong.StringSlice("/orange"),
-	//	PreserveHost:            kong.Bool(true),
-	//	Service:				 service,
-	//	StripPath:               kong.Bool(false),
-	//}
-	//
-	//route, err := kongClient.Routes.Create(ctx, &orangeRoute)
-	//
-	//if err != nil {
-	//	fmt.Errorf("BOOO: %s", err)
-	//}
-	//
-	//fmt.Println("CREATED ROUTE: ", route)
+func generateTestThings(kongo *kongClient.Kongo) error {
+	k8sService := kongClient.K8sService{
+		Addresses: []*string{kong.String("localhost")},
+		Name:      "steve-test-service-one",
+		Path:      "/testing-1-2-3",
+		Port:      80,
+	}
+
+	registered, err := kongo.RegisterK8sService(&k8sService)
+	if err != nil {
+		_, err = fmt.Println("None create the things: ", err)
+		return err
+	}
+
+	_, err = fmt.Println(registered)
+	return err
 }
