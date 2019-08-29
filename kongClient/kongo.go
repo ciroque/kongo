@@ -50,23 +50,38 @@ type ServiceDef struct {
 	Protocol string `default:"GET"`
 }
 
-func (kongo *Kongo) CreateService(serviceParams *ServiceDef) (*kong.Service, error) {
-	serviceDef := kong.Service{
+func (kongo *Kongo) CreateService(serviceDef *ServiceDef) (*kong.Service, error) {
+	kongService := kong.Service{
 		ClientCertificate: nil,
 		CreatedAt:         nil,
-		Host:              kong.String(serviceParams.Host),
+		Host:              kong.String(serviceDef.Host),
 		ID:                nil,
-		Name:              kong.String(serviceParams.Name),
-		Path:              kong.String(serviceParams.Path),
-		Port:              kong.Int(serviceParams.Port),
+		Name:              kong.String(serviceDef.Name),
+		Path:              kong.String(serviceDef.Path),
+		Port:              kong.Int(serviceDef.Port),
 		Protocol:          nil,
 		ReadTimeout:       nil,
 		Retries:           nil,
 		WriteTimeout:      nil,
 		Tags:              kongo.tags,
 	}
-	service, err := kongo.Kong.Services.Create(kongo.context, &serviceDef)
-	return service, err
+	return kongo.Kong.Services.Create(kongo.context, &kongService)
+}
+
+type TargetDef struct {
+	Target string
+	Upstream *kong.Upstream
+	Weight int
+}
+
+func (kongo *Kongo) CreateTarget(targetDef *TargetDef) (*kong.Target, error) {
+	kongTarget := kong.Target{
+		Target:    kong.String(targetDef.Target),
+		Upstream:  targetDef.Upstream,
+		Weight:    kong.Int(targetDef.Weight),
+		Tags:      kongo.tags,
+	}
+	return kongo.Kong.Targets.Create(kongo.context, targetDef.Upstream.Name, &kongTarget)
 }
 
 type UpstreamDef struct {
@@ -74,10 +89,10 @@ type UpstreamDef struct {
 	// TODO: Add Healthchecks configuration
 }
 
-func (kongo *Kongo) CreateUpstream(upstreamParams *UpstreamDef) (*kong.Upstream, error) {
-	upstreamDef := kong.Upstream{
+func (kongo *Kongo) CreateUpstream(upstreamDef *UpstreamDef) (*kong.Upstream, error) {
+	kongUpstream := kong.Upstream{
 		ID:                 nil,
-		Name:               kong.String(upstreamParams.Name),
+		Name:               kong.String(upstreamDef.Name),
 		Algorithm:          nil,
 		Slots:              nil,
 		Healthchecks:       nil,
@@ -90,12 +105,16 @@ func (kongo *Kongo) CreateUpstream(upstreamParams *UpstreamDef) (*kong.Upstream,
 		HashOnCookiePath:   nil,
 		Tags:               kongo.tags,
 	}
-	upstream, err := kongo.Kong.Upstreams.Create(kongo.context, &upstreamDef)
-	return upstream, err
+	return kongo.Kong.Upstreams.Create(kongo.context, &kongUpstream)
 }
 
-func (kongo *Kongo) DeleteService(id string) (*kong.Upstream, error) {
+func (kongo *Kongo) DeleteService(id string) (*kong.Service, error) {
 	err := kongo.Kong.Services.Delete(kongo.context, kong.String(id))
+	return nil, err
+}
+
+func (kongo *Kongo) DeleteTarget(targetDef *TargetDef) (*kong.Target, error) {
+	err := kongo.Kong.Targets.Delete(kongo.context, targetDef.Upstream.Name, kong.String(targetDef.Target))
 	return nil, err
 }
 
@@ -112,6 +131,11 @@ func (kongo *Kongo) GetVersion() (*string, error) {
 func (kongo *Kongo) ListServices() ([]*kong.Service, error) {
 	services, _, err := kongo.Kong.Services.List(kongo.context, &kongo.listOptions)
 	return services, err
+}
+
+func (kongo *Kongo) ListTargets(upstreamId string) ([]*kong.Target, error) {
+	targets, _, err := kongo.Kong.Targets.List(kongo.context, kong.String(upstreamId), &kongo.listOptions)
+	return targets, err
 }
 
 func (kongo *Kongo) ListUpstreams() ([]*kong.Upstream, error) {

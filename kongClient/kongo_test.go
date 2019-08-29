@@ -1,6 +1,7 @@
 package kongClient
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -91,5 +92,48 @@ func TestServices(t *testing.T) {
 }
 
 func TestTargets(t *testing.T) {
-	t.Skip("Not a thing yet")
+	baseUrl := "http://localhost:8001"
+	kongo, _ := NewKongo(&baseUrl)
+
+	upstreamDef := UpstreamDef{Name: "kongo-test-target-upstream"}
+
+	kongo.DeleteUpstream(upstreamDef.Name)
+
+	upstream, err := kongo.CreateUpstream(&upstreamDef)
+	if err != nil {
+		t.Fatalf("Error creating Upstream for Target: %v", err)
+	}
+
+	targetDef := TargetDef{
+		Target:   "kongo-test-target-1:80",
+		Upstream: upstream,
+		Weight:   10,
+	}
+
+	target, err := kongo.CreateTarget(&targetDef)
+	if err != nil {
+		t.Fatalf("Error creating Target: %v", err)
+	}
+
+	if target == nil {
+		t.Fatal("The Target was not created")
+	}
+
+	fmt.Println("Created Target: ", target)
+
+	targets, err := kongo.ListTargets(upstreamDef.Name)
+	fmt.Println("THERE ARE", len(targets), "TARGETS")
+	for _, target := range targets {
+		fmt.Println("target: ", *target.Target)
+	}
+
+	_, err = kongo.DeleteTarget(&targetDef)
+	if err != nil {
+		t.Fatalf("Failed to remove created Target: %v", err)
+	}
+
+	_, err = kongo.DeleteUpstream(upstreamDef.Name)
+	if err != nil {
+		t.Fatalf("Failed to remove created Upstream: %v", err)
+	}
 }
