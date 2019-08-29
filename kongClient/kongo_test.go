@@ -111,6 +111,9 @@ func TestTargets(t *testing.T) {
 		Weight:   10,
 	}
 
+	targets, err := kongo.ListTargets(upstreamDef.Name)
+	startTargetCount := len(targets)
+
 	target, err := kongo.CreateTarget(&targetDef)
 	if err != nil {
 		t.Fatalf("Error creating Target: %v", err)
@@ -120,14 +123,22 @@ func TestTargets(t *testing.T) {
 		t.Fatal("The Target was not created")
 	}
 
-	targets, err := kongo.ListTargets(upstreamDef.Name)
-	for _, target := range targets {
-		fmt.Println("target: ", *target.Target)
+	targets, err = kongo.ListTargets(upstreamDef.Name)
+	newTargetCount := len(targets)
+
+	if newTargetCount - startTargetCount != 1 {
+		t.Fatalf("Target should have been created")
 	}
 
 	_, err = kongo.DeleteTarget(&targetDef)
 	if err != nil {
 		t.Fatalf("Failed to remove created Target: %v", err)
+	}
+
+	targets, err = kongo.ListTargets(upstreamDef.Name)
+	newTargetCount = len(targets)
+	if newTargetCount != startTargetCount {
+		t.Fatalf("Target should have been deleted")
 	}
 
 	_, err = kongo.DeleteUpstream(upstreamDef.Name)
@@ -171,7 +182,7 @@ func TestRoutes(t *testing.T) {
 	routes, err := kongo.ListRoutes()
 	startRouteCount := len(routes)
 
-	_, err = kongo.CreateRoute(routeDef)
+	_, err = kongo.CreateRoute(&routeDef)
 	if err != nil {
 		t.Fatalf("Failed to create Route: %v", err)
 	}
