@@ -42,6 +42,37 @@ func NewKongo(baseUrl *string) (*Kongo, error) {
 	return kongo, nil
 }
 
+type RouteDef struct {
+	Name string
+	Paths []*string
+	Service *kong.Service
+	StripPath bool
+}
+
+func (kongo *Kongo) CreateRoute(routeDef RouteDef) (*kong.Route, error) {
+	kongRoute := kong.Route{
+		CreatedAt:               nil,
+		Hosts:                   nil,
+		Headers:                 nil,
+		ID:                      nil,
+		Name:                    kong.String(routeDef.Name),
+		Methods:                 nil,
+		Paths:                   routeDef.Paths,
+		PreserveHost:            nil,
+		Protocols:               nil,
+		RegexPriority:           nil,
+		Service:                 routeDef.Service,
+		StripPath:               kong.Bool(routeDef.StripPath),
+		UpdatedAt:               nil,
+		SNIs:                    nil,
+		Sources:                 nil,
+		Destinations:            nil,
+		Tags:                    nil,
+		HTTPSRedirectStatusCode: nil,
+	}
+	return kongo.Kong.Routes.Create(kongo.context, &kongRoute)
+}
+
 type ServiceDef struct {
 	Name     string
 	Host     string
@@ -108,24 +139,31 @@ func (kongo *Kongo) CreateUpstream(upstreamDef *UpstreamDef) (*kong.Upstream, er
 	return kongo.Kong.Upstreams.Create(kongo.context, &kongUpstream)
 }
 
-func (kongo *Kongo) DeleteService(id string) (*kong.Service, error) {
-	err := kongo.Kong.Services.Delete(kongo.context, kong.String(id))
-	return nil, err
+func (kongo *Kongo) DeleteRoute(idOrName string) (*kong.Route, error) {
+	return nil, kongo.Kong.Routes.Delete(kongo.context, kong.String(idOrName))
+}
+
+func (kongo *Kongo) DeleteService(idOrName string) (*kong.Service, error) {
+	return nil, kongo.Kong.Services.Delete(kongo.context, kong.String(idOrName))
 }
 
 func (kongo *Kongo) DeleteTarget(targetDef *TargetDef) (*kong.Target, error) {
-	err := kongo.Kong.Targets.Delete(kongo.context, targetDef.Upstream.Name, kong.String(targetDef.Target))
-	return nil, err
+	return nil, kongo.Kong.Targets.Delete(kongo.context, targetDef.Upstream.Name, kong.String(targetDef.Target))
 }
 
-func (kongo *Kongo) DeleteUpstream(id string) (*kong.Upstream, error) {
-	err := kongo.Kong.Upstreams.Delete(kongo.context, kong.String(id))
+func (kongo *Kongo) DeleteUpstream(idOrName string) (*kong.Upstream, error) {
+	err := kongo.Kong.Upstreams.Delete(kongo.context, kong.String(idOrName))
 	return nil, err
 }
 
 func (kongo *Kongo) GetVersion() (*string, error) {
 	root, err := kongo.Kong.Root(nil)
 	return kong.String(root["version"].(string)), err
+}
+
+func (kongo *Kongo) ListRoutes() ([]*kong.Route, error) {
+	services, _, err := kongo.Kong.Routes.List(kongo.context, &kongo.listOptions)
+	return services, err
 }
 
 func (kongo *Kongo) ListServices() ([]*kong.Service, error) {

@@ -2,6 +2,7 @@ package kongClient
 
 import (
 	"fmt"
+	"github.com/hbagdi/go-kong/kong"
 	"testing"
 )
 
@@ -119,10 +120,7 @@ func TestTargets(t *testing.T) {
 		t.Fatal("The Target was not created")
 	}
 
-	fmt.Println("Created Target: ", target)
-
 	targets, err := kongo.ListTargets(upstreamDef.Name)
-	fmt.Println("THERE ARE", len(targets), "TARGETS")
 	for _, target := range targets {
 		fmt.Println("target: ", *target.Target)
 	}
@@ -135,5 +133,65 @@ func TestTargets(t *testing.T) {
 	_, err = kongo.DeleteUpstream(upstreamDef.Name)
 	if err != nil {
 		t.Fatalf("Failed to remove created Upstream: %v", err)
+	}
+}
+
+func TestRoutes(t *testing.T) {
+	baseUrl := "http://localhost:8001"
+	kongo, _ := NewKongo(&baseUrl)
+
+	routeName := "kongo-routes-test-route"
+
+	serviceDef := ServiceDef{
+		Name:     "kongo-routes-test-service",
+		Host:     "localhost",
+		Path:     "/orange",
+		Port:     8080,
+		Protocol: "HTTP",
+	}
+
+	_, err := kongo.DeleteRoute(routeName)
+	_, err = kongo.DeleteService(serviceDef.Name)
+	if err != nil {
+		fmt.Println("Failed to delete previously existing Service for Route: ", err)
+	}
+
+	service, err := kongo.CreateService(&serviceDef)
+	if err != nil {
+		t.Fatalf("Failed to create Service for Route: %v", err)
+	}
+
+	routeDef := RouteDef{
+		Name:      routeName,
+		Paths:     kong.StringSlice("/orange", "/orange-whip"),
+		Service:   service,
+		StripPath: false,
+	}
+
+	routes, err := kongo.ListRoutes()
+	startRouteCount := len(routes)
+
+	_, err = kongo.CreateRoute(routeDef)
+	if err != nil {
+		t.Fatalf("Failed to create Route: %v", err)
+	}
+
+	routes, err = kongo.ListRoutes()
+	nextRouteCount := len(routes)
+
+	if nextRouteCount - startRouteCount != 1 {
+		t.Fatalf("A Route should have been created.")
+	}
+
+	_, err = kongo.DeleteRoute(routeDef.Name)
+	if err != nil {
+		t.Fatalf("Failed to delete Route: %v", err)
+	}
+
+	routes, err = kongo.ListRoutes()
+	nextRouteCount = len(routes)
+
+	if nextRouteCount != startRouteCount {
+		t.Fatalf("A route should have been deleted.")
 	}
 }
