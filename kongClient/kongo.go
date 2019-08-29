@@ -9,9 +9,10 @@ import (
 )
 
 type Kongo struct {
-	Kong *kong.Client
-	context context.Context
+	Kong        *kong.Client
+	context     context.Context
 	listOptions kong.ListOpt
+	tags        []*string
 }
 
 func NewKongo(baseUrl *string) (*Kongo, error) {
@@ -28,7 +29,7 @@ func NewKongo(baseUrl *string) (*Kongo, error) {
 
 	httpClient := http.DefaultClient
 	httpClient.Transport = &KongoRoundTripper{
-		headers: headers,
+		headers:      headers,
 		roundTripper: defaultTransport,
 	}
 	kongClient, err := kong.NewClient(baseUrl, httpClient)
@@ -41,33 +42,42 @@ func NewKongo(baseUrl *string) (*Kongo, error) {
 	return kongo, nil
 }
 
-func (kongo *Kongo) CreateService(name string, host string) (*kong.Service, error) {
+type ServiceDef struct {
+	Name     string
+	Host     string
+	Path     string
+	Port     int
+	Protocol string `default:"GET"`
+}
+
+func (kongo *Kongo) CreateService(serviceParams *ServiceDef) (*kong.Service, error) {
 	serviceDef := kong.Service{
 		ClientCertificate: nil,
-		ConnectTimeout:    nil,
 		CreatedAt:         nil,
-		Host:              kong.String(host),
+		Host:              kong.String(serviceParams.Host),
 		ID:                nil,
-		Name:              kong.String(name),
-		Path:              nil,
-		Port:              nil,
+		Name:              kong.String(serviceParams.Name),
+		Path:              kong.String(serviceParams.Path),
+		Port:              kong.Int(serviceParams.Port),
 		Protocol:          nil,
 		ReadTimeout:       nil,
 		Retries:           nil,
-		UpdatedAt:         nil,
 		WriteTimeout:      nil,
-		Tags:              nil,
+		Tags:              kongo.tags,
 	}
 	service, err := kongo.Kong.Services.Create(kongo.context, &serviceDef)
-
 	return service, err
 }
 
-// TODO: fill out all the necessary fields...
-func (kongo *Kongo) CreateUpstream(name string) (*kong.Upstream, error) {
+type UpstreamDef struct {
+	Name string
+	// TODO: Add Healthchecks configuration
+}
+
+func (kongo *Kongo) CreateUpstream(upstreamParams *UpstreamDef) (*kong.Upstream, error) {
 	upstreamDef := kong.Upstream{
 		ID:                 nil,
-		Name:               kong.String(name),
+		Name:               kong.String(upstreamParams.Name),
 		Algorithm:          nil,
 		Slots:              nil,
 		Healthchecks:       nil,
@@ -78,7 +88,7 @@ func (kongo *Kongo) CreateUpstream(name string) (*kong.Upstream, error) {
 		HashFallbackHeader: nil,
 		HashOnCookie:       nil,
 		HashOnCookiePath:   nil,
-		Tags:               kong.StringSlice("marchex", "app-services", "k8s-kong-federated-ingress"),
+		Tags:               kongo.tags,
 	}
 	upstream, err := kongo.Kong.Upstreams.Create(kongo.context, &upstreamDef)
 	return upstream, err
@@ -108,4 +118,3 @@ func (kongo *Kongo) ListUpstreams() ([]*kong.Upstream, error) {
 	upstreams, _, err := kongo.Kong.Upstreams.List(kongo.context, &kongo.listOptions)
 	return upstreams, err
 }
-

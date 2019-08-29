@@ -23,11 +23,12 @@ func main() {
 	kongo, _ := kongClient.NewKongo(&baseUrl)
 	fmt.Println(kongo.GetVersion())
 
-		services, _ := kongo.ListServices()
+	services, _ := kongo.ListServices()
 	printServices(services)
 
 	fmt.Println("CREATING UPSTREAM")
-	upstream, _ := kongo.CreateUpstream("orange-service-upstream")
+	upstreamDef := kongClient.UpstreamDef{Name: "orange-service-upstream"}
+	upstream, _ := kongo.CreateUpstream(&upstreamDef)
 	upstreamName := *upstream.Name
 	fmt.Println(upstreamName)
 
@@ -39,7 +40,6 @@ func main() {
 
 	upstreams, _ = kongo.ListUpstreams()
 	printUpstreams(upstreams)
-
 
 	//var ctx context.Context
 	//
@@ -90,5 +90,3 @@ func main() {
 	//
 	//fmt.Println("CREATED ROUTE: ", route)
 }
-
-

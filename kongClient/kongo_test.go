@@ -14,7 +14,9 @@ func TestUpstreams(t *testing.T) {
 	upstreams, _ := kongo.ListUpstreams()
 	startUpstreamCount := len(upstreams)
 
-	upstream, err := kongo.CreateUpstream(upstreamName)
+	upstreamDef := UpstreamDef{Name: upstreamName}
+
+	upstream, err := kongo.CreateUpstream(&upstreamDef)
 	if err != nil {
 		t.Fatalf("Creation of Upstream failed: %s", err)
 	}
@@ -53,7 +55,14 @@ func TestServices(t *testing.T) {
 	services, _ := kongo.ListServices()
 	startServiceCount := len(services)
 
-	upstream, err := kongo.CreateService(serviceName, serviceHost)
+	serviceDef := ServiceDef{
+		Name: serviceName,
+		Host: serviceHost,
+		Path: "/rootPath",
+		Port: 8080,
+	}
+
+	upstream, err := kongo.CreateService(&serviceDef)
 	if err != nil {
 		t.Fatalf("Creation of Service failed: %s", err)
 	}
@@ -65,7 +74,7 @@ func TestServices(t *testing.T) {
 	services, _ = kongo.ListServices()
 	nextServiceCount := len(services)
 
-	if nextServiceCount - startServiceCount != 1 {
+	if nextServiceCount-startServiceCount != 1 {
 		t.Fatalf("There should be one more Services than at the start of the test start: %v, ended: %v", startServiceCount, nextServiceCount)
 	}
 
@@ -79,4 +88,8 @@ func TestServices(t *testing.T) {
 	if nextServiceCount != startServiceCount {
 		t.Fatalf("There should be the same number of Services as at the start of the test start: %v, ended: %v", startServiceCount, nextServiceCount)
 	}
+}
+
+func TestTargets(t *testing.T) {
+	t.Skip("Not a thing yet")
 }
