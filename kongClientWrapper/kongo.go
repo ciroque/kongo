@@ -1,4 +1,4 @@
-package kongClient
+package kongClientWrapper
 
 import (
 	"context"
@@ -9,8 +9,12 @@ import (
 	"strings"
 )
 
+type KongClient interface {
+
+}
+
 type Kongo struct {
-	Kong        *kong.Client
+	Kong        *kong.Client // TODO: Implement the KongClient interface
 	context     context.Context
 	listOptions kong.ListOpt
 	tags        []*string

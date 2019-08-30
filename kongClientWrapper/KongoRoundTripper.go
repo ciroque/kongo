@@ -1,4 +1,4 @@
-package kongClient
+package kongClientWrapper
 
 import (
 	"net/http"

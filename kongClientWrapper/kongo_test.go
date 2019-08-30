@@ -1,10 +1,11 @@
-package kongClient
+package kongClientWrapper
 
 import (
 	"fmt"
 	"github.com/hbagdi/go-kong/kong"
 	"testing"
 )
+
 
 func TestUpstreams(t *testing.T) {
 	upstreamName := "kongo-test-upstream"

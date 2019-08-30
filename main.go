@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/hbagdi/go-kong/kong"
-	"kongo/kongClient"
+	"kongo/kongClientWrapper"
 	"os"
 )
 
@@ -25,14 +25,14 @@ func main() {
 
 	//baseUrl := "http://qa-swarmcluster1.sea1.marchex.com:8001"
 	baseUrl := "http://localhost:8001"
-	kongo, _ := kongClient.NewKongo(&baseUrl)
+	kongo, _ := kongClientWrapper.NewKongo(&baseUrl)
 	v, _ := kongo.GetVersion()
 	fmt.Println(*v)
 
 	command := args[0]
 	switch command {
 		case "truncate":
-			//truncateKong(kongo)
+			truncateKong(kongo)
 		case "list":
 			listAllThings(kongo)
 		case "generate-test-data":
@@ -42,7 +42,7 @@ func main() {
 	}
 }
 
-func listAllThings(kongo *kongClient.Kongo) error {
+func listAllThings(kongo *kongClientWrapper.Kongo) error {
 	upstreams, err := kongo.ListUpstreams()
 	if err != nil {
 		return fmt.Errorf("error listing Upstreams: %v", err)
@@ -67,7 +67,7 @@ func listAllThings(kongo *kongClient.Kongo) error {
 	}
 
 	for _, service := range services {
-		output := fmt.Sprintf("Service{ Name: %s, ID: %s. Path: %s, Port: %v }", *service.Name, *service.ID, service.Path, *service.Port)
+		output := fmt.Sprintf("Service{ Name: %s, ID: %s. Path: %s, Port: %v }", *service.Name, *service.ID, *service.Path, *service.Port)
 		fmt.Println(output)
 	}
 
@@ -77,14 +77,14 @@ func listAllThings(kongo *kongClient.Kongo) error {
 	}
 
 	for _, route := range routes {
-		output := fmt.Sprintf("Route{ Name: %s, ID: %s, ServiceName: %v, StripPath: %s}", *route.Name, *route.ID, route.Service.Name, *route.StripPath)
+		output := fmt.Sprintf("Route{ Name: %s, ID: %s, ServiceName: %v, StripPath: %v}", *route.Name, *route.ID, *route.Service.Name, *route.StripPath)
 		fmt.Println(output)
 	}
 
 	return nil
 }
 
-func truncateKong(kongo *kongClient.Kongo) {
+func truncateKong(kongo *kongClientWrapper.Kongo) {
 	err := kongo.DeleteAllTargets()
 	if err != nil {
 		fmt.Println("Error deleting all Targets: ", err)
@@ -106,8 +106,8 @@ func truncateKong(kongo *kongClient.Kongo) {
 	}
 }
 
-func generateTestThings(kongo *kongClient.Kongo) error {
-	k8sService := kongClient.K8sService{
+func generateTestThings(kongo *kongClientWrapper.Kongo) error {
+	k8sService := kongClientWrapper.K8sService{
 		Addresses: []*string{kong.String("localhost")},
 		Name:      "steve-test-service-one",
 		Path:      "/testing-1-2-3",
