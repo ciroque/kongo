@@ -14,7 +14,7 @@
   name = "github.com/hbagdi/go-kong"
   packages = [
     "kong",
-    "kong/custom",
+    "kong/custom"
   ]
   pruneopts = "UT"
   revision = "2ba5bff1e2e855ea7eda2fa7f3fab020f3bef395"

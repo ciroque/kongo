@@ -3,46 +3,59 @@ package main
 import (
 	"fmt"
 	"github.com/hbagdi/go-kong/kong"
-	"kongo/kongClientWrapper"
+	"kongo/client"
 	"os"
 )
 
-func printServices(services []*kong.Service) {
-	for idx, service := range services {
-		fmt.Println("Service #", idx, ": ", *service.Name)
-	}
+type Command struct {
+	function func(kongo *client.Kongo) error
+	description string
 }
 
-func printUpstreams(upstreams []*kong.Upstream) {
-	for idx, upstream := range upstreams {
-		fmt.Println("Upstream #", idx, ": ", *upstream.Name)
-	}
+func getCommands() map[string]Command {
+	commands := make(map[string]Command)
+
+	commands["generate-test-data"] = Command{generateTestThings, "Generates test entities in Kong"}
+	commands["list"] = Command{listAllThings, "Lists all entities within Kong"}
+	commands["truncate"] = Command{truncateKong, "Deletes all entities from Kong (USE WITH CAUTION)"}
+	commands["usage"] = Command{printUsage, "Shows the usage of the tool and available commands"}
+
+	return commands
 }
 
 func main() {
-
 	args :=os.Args[1:]
 
-	//baseUrl := "http://qa-swarmcluster1.sea1.marchex.com:8001"
 	baseUrl := "http://localhost:8001"
-	kongo, _ := kongClientWrapper.NewKongo(&baseUrl)
-	v, _ := kongo.GetVersion()
-	fmt.Println(*v)
+	kongo, _ := client.NewKongo(&baseUrl)
 
-	command := args[0]
-	switch command {
-		case "truncate":
-			truncateKong(kongo)
-		case "list":
-			listAllThings(kongo)
-		case "generate-test-data":
-			generateTestThings(kongo)
-		default:
-			fmt.Println(fmt.Sprintf("Unknown command '%s'", command))
+	commands := getCommands()
+	command, found := commands[args[0]]
+	if !found {
+		command = commands["usage"]
 	}
+	command.function(kongo)
 }
 
-func listAllThings(kongo *kongClientWrapper.Kongo) error {
+func generateTestThings(kongo *client.Kongo) error {
+	k8sService := client.K8sService{
+		Addresses: []*string{kong.String("localhost")},
+		Name:      "steve-test-service-one",
+		Path:      "/testing-1-2-3",
+		Port:      80,
+	}
+
+	registered, err := kongo.RegisterK8sService(&k8sService)
+	if err != nil {
+		_, err = fmt.Println("None create the things: ", err)
+		return err
+	}
+
+	_, err = fmt.Println(registered)
+	return err
+}
+
+func listAllThings(kongo *client.Kongo) error {
 	upstreams, err := kongo.ListUpstreams()
 	if err != nil {
 		return fmt.Errorf("error listing Upstreams: %v", err)
@@ -76,15 +89,47 @@ func listAllThings(kongo *kongClientWrapper.Kongo) error {
 		return fmt.Errorf("error listing Routes: %v", err)
 	}
 
+	getServiceName := func (route *kong.Route) string {
+		name := "<undefined>"
+		if route.Service.Name != nil {
+			name = *route.Service.Name
+		}
+		return name
+	}
+
 	for _, route := range routes {
-		output := fmt.Sprintf("Route{ Name: %s, ID: %s, ServiceName: %v, StripPath: %v}", *route.Name, *route.ID, *route.Service.Name, *route.StripPath)
+
+		output := fmt.Sprintf("Route{ Name: %s, ID: %s, ServiceName: %v, StripPath: %v}", *route.Name, *route.ID, getServiceName(route), *route.StripPath)
 		fmt.Println(output)
 	}
 
 	return nil
 }
 
-func truncateKong(kongo *kongClientWrapper.Kongo) {
+func printServices(services []*kong.Service) {
+	for idx, service := range services {
+		fmt.Println("Service #", idx, ": ", *service.Name)
+	}
+}
+
+func printUpstreams(upstreams []*kong.Upstream) {
+	for idx, upstream := range upstreams {
+		fmt.Println("Upstream #", idx, ": ", *upstream.Name)
+	}
+}
+
+func printUsage(kongo *client.Kongo) error {
+	commands := getCommands()
+	fmt.Println("kongo usage:")
+	fmt.Println("./kongo [command], where command is one of:")
+	for k, v := range commands {
+		fmt.Printf("\t- '%s': %s\n", k, v.description)
+	}
+
+	return nil
+}
+
+func truncateKong(kongo *client.Kongo) error {
 	err := kongo.DeleteAllTargets()
 	if err != nil {
 		fmt.Println("Error deleting all Targets: ", err)
@@ -104,22 +149,6 @@ func truncateKong(kongo *kongClientWrapper.Kongo) {
 	if err != nil {
 		fmt.Println("Error deleting all Streams: ", err)
 	}
-}
 
-func generateTestThings(kongo *kongClientWrapper.Kongo) error {
-	k8sService := kongClientWrapper.K8sService{
-		Addresses: []*string{kong.String("localhost")},
-		Name:      "steve-test-service-one",
-		Path:      "/testing-1-2-3",
-		Port:      80,
-	}
-
-	registered, err := kongo.RegisterK8sService(&k8sService)
-	if err != nil {
-		_, err = fmt.Println("None create the things: ", err)
-		return err
-	}
-
-	_, err = fmt.Println(registered)
-	return err
+	return nil
 }

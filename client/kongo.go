@@ -1,4 +1,4 @@
-package kongClientWrapper
+package client
 
 import (
 	"context"
