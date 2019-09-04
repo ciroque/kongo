@@ -10,7 +10,6 @@ import (
 )
 
 type KongClient interface {
-
 }
 
 type Kongo struct {
@@ -48,9 +47,9 @@ func NewKongo(baseUrl *string) (*Kongo, error) {
 }
 
 type RouteDef struct {
-	Name string
-	Paths []*string
-	Service *kong.Service
+	Name      string
+	Paths     []*string
+	Service   *kong.Service
 	StripPath bool
 }
 
@@ -95,7 +94,7 @@ func (kongo *Kongo) CreateService(serviceDef *ServiceDef) (*kong.Service, error)
 		Name:              kong.String(serviceDef.Name),
 		Path:              kong.String(serviceDef.Path),
 		Port:              kong.Int(serviceDef.Port),
-		Protocol:          nil,
+		Protocol:          kong.String("http"),
 		ReadTimeout:       nil,
 		Retries:           nil,
 		WriteTimeout:      nil,
@@ -105,9 +104,9 @@ func (kongo *Kongo) CreateService(serviceDef *ServiceDef) (*kong.Service, error)
 }
 
 type TargetDef struct {
-	Target string
+	Target   string
 	Upstream *kong.Upstream
-	Weight int
+	Weight   int
 }
 
 func NewTargetDef(target string, upstream *kong.Upstream, weight int) *TargetDef {
@@ -120,10 +119,10 @@ func NewTargetDef(target string, upstream *kong.Upstream, weight int) *TargetDef
 
 func (kongo *Kongo) CreateTarget(targetDef *TargetDef) (*kong.Target, error) {
 	kongTarget := kong.Target{
-		Target:    kong.String(targetDef.Target),
-		Upstream:  targetDef.Upstream,
-		Weight:    kong.Int(targetDef.Weight),
-		Tags:      kongo.tags,
+		Target:   kong.String(targetDef.Target),
+		Upstream: targetDef.Upstream,
+		Weight:   kong.Int(targetDef.Weight),
+		Tags:     kongo.tags,
 	}
 	return kongo.Kong.Targets.Create(kongo.context, targetDef.Upstream.Name, &kongTarget)
 }
@@ -196,22 +195,22 @@ func (kongo *Kongo) ListUpstreams() ([]*kong.Upstream, error) {
 
 type K8sService struct {
 	Addresses []*string
-	Name string
-	Path string
-	Port int
+	Name      string
+	Path      string
+	Port      int
 }
 
 type RegisteredK8sService struct {
-	Service *kong.Service
-	Targets []*kong.Target
-	Route *kong.Route
+	Service  *kong.Service
+	Targets  []*kong.Target
+	Route    *kong.Route
 	Upstream *kong.Upstream
 }
 
 type KongNames struct {
 	UpstreamName string
-	ServiceName string
-	RouteName string
+	ServiceName  string
+	RouteName    string
 }
 
 func NewKongNames(baseName string) *KongNames {
@@ -230,9 +229,7 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 	upstreamDef := UpstreamDef{Name: upstreamName}
 	kongUpstream, err := kongo.CreateUpstream(&upstreamDef)
 	if err != nil {
-		t := fmt.Errorf("error creating Upstream: %s", err)
-		fmt.Println(t)
-		return nil, t
+		return nil, fmt.Errorf("error creating Upstream: %s", err)
 	}
 
 	// retval
@@ -259,10 +256,10 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 	// 3 - Create Service
 	serviceName := kongNames.ServiceName
 	serviceDef := ServiceDef{
-		Name:     serviceName,
-		Host:     upstreamName,
-		Path:     k8sService.Path,
-		Port:     k8sService.Port,
+		Name: serviceName,
+		Host: upstreamName,
+		Path: k8sService.Path,
+		Port: k8sService.Port,
 	}
 	kongService, err := kongo.CreateService(&serviceDef)
 	if err != nil {
