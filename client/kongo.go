@@ -242,7 +242,7 @@ func (kongo *Kongo) RegisterK8sService(k8sService *K8sService) (*RegisteredK8sSe
 		targetDef := TargetDef{
 			Target:   *target,
 			Upstream: kongUpstream,
-			Weight:   0,
+			Weight:   1,
 		}
 		kongTarget, err := kongo.CreateTarget(&targetDef)
 		if err != nil {
