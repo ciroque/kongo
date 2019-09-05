@@ -15,7 +15,8 @@ type Command struct {
 func getCommands() map[string]Command {
 	commands := make(map[string]Command)
 
-	commands["generate-test-data"] = Command{generateTestThings, "Generates test entities in Kong"}
+	commands["register-test-resources"] = Command{registerTestResources, "Generates test entities in Kong"}
+	commands["deregister-test-resources"] = Command{deregisterTestResources, "Removes test resources from Kong"}
 	commands["list"] = Command{listAllThings, "Lists all entities within Kong"}
 	commands["truncate"] = Command{truncateKong, "Deletes all entities from Kong (USE WITH CAUTION)"}
 	commands["usage"] = Command{printUsage, "Shows the usage of the tool and available commands"}
@@ -37,7 +38,22 @@ func main() {
 	command.function(kongo)
 }
 
-func generateTestThings(kongo *client.Kongo) error {
+func deregisterTestResources(kongo *client.Kongo) error {
+	k8sService := client.K8sService{
+		Addresses: []*string{kong.String("localhost")},
+		Name:      "steve-test-service-one",
+		Path:      "/testing-1-2-3",
+		Port:      80,
+	}
+
+	err := kongo.DeregisterK8sService(&k8sService)
+	if err != nil {
+		return fmt.Errorf("None delete the things: %v", err)
+	}
+	return nil
+}
+
+func registerTestResources(kongo *client.Kongo) error {
 	k8sService := client.K8sService{
 		Addresses: []*string{kong.String("localhost")},
 		Name:      "steve-test-service-one",
