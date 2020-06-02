@@ -4,12 +4,31 @@ import (
 	"fmt"
 	"github.com/hbagdi/go-kong/kong"
 	"kongo/client"
+	"log"
 	"os"
 )
 
 type Command struct {
-	function func(kongo *client.Kongo) error
+	function    func(kongo *client.Kongo) error
 	description string
+}
+
+func main() {
+	args := os.Args[1:]
+
+	baseUrl := "http://localhost:8001"
+	//baseUrl := "http://qa-king-kong-api-gateway.us-west-2.marchex.net:8001"
+	kongo, _ := client.NewKongo(&baseUrl)
+
+	commands := getCommands()
+	command, found := commands[args[0]]
+	if !found {
+		command = commands["usage"]
+	}
+	err := command.function(kongo)
+	if err != nil {
+		log.Fatal("Something went horribly, horribly wrong: %v", err)
+	}
 }
 
 func getCommands() map[string]Command {
@@ -22,20 +41,6 @@ func getCommands() map[string]Command {
 	commands["usage"] = Command{printUsage, "Shows the usage of the tool and available commands"}
 
 	return commands
-}
-
-func main() {
-	args :=os.Args[1:]
-
-	baseUrl := "http://localhost:8001"
-	kongo, _ := client.NewKongo(&baseUrl)
-
-	commands := getCommands()
-	command, found := commands[args[0]]
-	if !found {
-		command = commands["usage"]
-	}
-	command.function(kongo)
 }
 
 func deregisterTestResources(kongo *client.Kongo) error {
@@ -85,7 +90,7 @@ func listAllThings(kongo *client.Kongo) error {
 			return fmt.Errorf("error listing Targets for Upstream '%s': %v", *upstream.Name, err)
 		}
 		for _, target := range targets {
-			output := fmt.Sprintf("Target{ Target: %s, ID: %s }", *target.Target, *target.ID)
+			output := fmt.Sprintf("Target{ Target: %s, ID: %s, UpstreamName: %v }", *target.Target, *target.ID, *upstream.Name)
 			fmt.Println(output)
 		}
 	}
@@ -96,7 +101,7 @@ func listAllThings(kongo *client.Kongo) error {
 	}
 
 	for _, service := range services {
-		output := fmt.Sprintf("Service{ Name: %s, ID: %s. Path: %s, Port: %v }", *service.Name, *service.ID, *service.Path, *service.Port)
+		output := fmt.Sprintf("Service{ Name: %s, ID: %s, Port: %v }", *service.Name, *service.ID, *service.Port)
 		fmt.Println(output)
 	}
 
@@ -105,7 +110,7 @@ func listAllThings(kongo *client.Kongo) error {
 		return fmt.Errorf("error listing Routes: %v", err)
 	}
 
-	getServiceName := func (route *kong.Route) string {
+	getServiceName := func(route *kong.Route) string {
 		name := "<undefined>"
 		if route.Service.Name != nil {
 			name = *route.Service.Name
