@@ -9,14 +9,19 @@ import (
 )
 
 type Command struct {
-	function    func(kongo *client.Kongo) error
+	function    func(kongo *client.Kongo, args []string) error
 	description string
 }
 
 func main() {
 	args := os.Args[1:]
 
-	baseUrl := "http://localhost:8001"
+	if len(args) == 0 {
+		printUsage(nil, args)
+		return
+	}
+
+		baseUrl := "http://localhost:8001"
 	//baseUrl := "http://qa-king-kong-api-gateway.us-west-2.marchex.net:8001"
 	kongo, _ := client.NewKongo(&baseUrl)
 
@@ -25,7 +30,7 @@ func main() {
 	if !found {
 		command = commands["usage"]
 	}
-	err := command.function(kongo)
+	err := command.function(kongo, args)
 	if err != nil {
 		log.Fatal("Something went horribly, horribly wrong: %v", err)
 	}
@@ -43,7 +48,7 @@ func getCommands() map[string]Command {
 	return commands
 }
 
-func deregisterTestResources(kongo *client.Kongo) error {
+func deregisterTestResources(kongo *client.Kongo, args []string) error {
 	k8sService := client.K8sService{
 		Addresses: []*string{kong.String("localhost")},
 		Name:      "steve-test-service-one",
@@ -58,7 +63,7 @@ func deregisterTestResources(kongo *client.Kongo) error {
 	return nil
 }
 
-func registerTestResources(kongo *client.Kongo) error {
+func registerTestResources(kongo *client.Kongo, args []string) error {
 	k8sService := client.K8sService{
 		Addresses: []*string{kong.String("localhost")},
 		Name:      "steve-test-service-one",
@@ -76,7 +81,7 @@ func registerTestResources(kongo *client.Kongo) error {
 	return err
 }
 
-func listAllThings(kongo *client.Kongo) error {
+func listAllThings(kongo *client.Kongo, args []string) error {
 	upstreams, err := kongo.ListUpstreams()
 	if err != nil {
 		return fmt.Errorf("error listing Upstreams: %v", err)
@@ -139,7 +144,7 @@ func printUpstreams(upstreams []*kong.Upstream) {
 	}
 }
 
-func printUsage(kongo *client.Kongo) error {
+func printUsage(kongo *client.Kongo, args []string) error {
 	commands := getCommands()
 	fmt.Println("kongo usage:")
 	fmt.Println("./kongo [command], where command is one of:")
@@ -150,7 +155,7 @@ func printUsage(kongo *client.Kongo) error {
 	return nil
 }
 
-func truncateKong(kongo *client.Kongo) error {
+func truncateKong(kongo *client.Kongo, args []string) error {
 	err := kongo.DeleteAllTargets()
 	if err != nil {
 		fmt.Println("Error deleting all Targets: ", err)
