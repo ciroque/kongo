@@ -226,10 +226,11 @@ type KongNames struct {
 }
 
 func NewKongNames(baseName string) *KongNames {
+	separator := "."
 	kongNames := new(KongNames)
-	kongNames.RouteName = strings.Join([]string{baseName, "route"}, "-")
-	kongNames.ServiceName = strings.Join([]string{baseName, "service"}, "-")
-	kongNames.UpstreamName = strings.Join([]string{baseName, "upstream"}, "-")
+	kongNames.RouteName = strings.Join([]string{baseName, "route"}, separator)
+	kongNames.ServiceName = strings.Join([]string{baseName, "service"}, separator)
+	kongNames.UpstreamName = strings.Join([]string{baseName, "upstream"}, separator)
 	return kongNames
 }
 
@@ -304,8 +305,8 @@ func (kongo *Kongo) DeleteAllUpstreams() error {
 	return nil
 }
 
-func (kongo *Kongo) DeregisterK8sService(k8sService *K8sService) error {
-	kongNames := NewKongNames(k8sService.Name)
+func (kongo *Kongo) DeregisterK8sService(baseName string) error {
+	kongNames := NewKongNames(baseName)
 	fmt.Println(kongNames)
 
 	var gerr error

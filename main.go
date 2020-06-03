@@ -1,44 +1,63 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/hbagdi/go-kong/kong"
+	jsoniter "github.com/json-iterator/go"
 	"kongo/client"
 	"log"
-	"os"
 )
 
+type Arguments struct {
+	KongUri *string
+	Command *string
+	Namespace *string
+	ServiceName *string
+}
+
+func (a Arguments) String() string {
+	json, _ := jsoniter.Marshal(a)
+	return string(json)
+}
+
+var arguments Arguments
+
 type Command struct {
-	function    func(kongo *client.Kongo, args []string) error
+	function    func(kongo *client.Kongo, args Arguments) error
 	description string
 }
 
+func init() {
+	arguments.KongUri = flag.String("kongUri", "http://localhost:8001", "Url for the Kong admin API")
+	arguments.Command = flag.String("command", "usage", "Describes the usage of kongo")
+	arguments.Namespace = flag.String("namespace", "", "The target namespace")
+	arguments.ServiceName = flag.String("service", "", "The target service name")
+}
+
 func main() {
-	args := os.Args[1:]
 
-	if len(args) == 0 {
-		printUsage(nil, args)
-		return
-	}
+	flag.Parse()
 
-		baseUrl := "http://localhost:8001"
-	//baseUrl := "http://qa-king-kong-api-gateway.us-west-2.marchex.net:8001"
-	kongo, _ := client.NewKongo(&baseUrl)
+	fmt.Println("arguments: ", arguments)
+
+	kongo, _ := client.NewKongo(arguments.KongUri)
 
 	commands := getCommands()
-	command, found := commands[args[0]]
+	command, found := commands[*arguments.Command]
 	if !found {
 		command = commands["usage"]
 	}
-	err := command.function(kongo, args)
+	err := command.function(kongo, arguments)
 	if err != nil {
-		log.Fatal("Something went horribly, horribly wrong: %v", err)
+		log.Fatal("Something went horribly, horribly wrong: ", err)
 	}
 }
 
 func getCommands() map[string]Command {
 	commands := make(map[string]Command)
 
+	commands["clear-entries"] = Command{clearEntries, "Removes all entries identified by the given namespace and name"}
 	commands["register-test-resources"] = Command{registerTestResources, "Generates test entities in Kong"}
 	commands["deregister-test-resources"] = Command{deregisterTestResources, "Removes test resources from Kong"}
 	commands["list"] = Command{listAllThings, "Lists all entities within Kong"}
@@ -48,7 +67,16 @@ func getCommands() map[string]Command {
 	return commands
 }
 
-func deregisterTestResources(kongo *client.Kongo, args []string) error {
+func clearEntries(kongo *client.Kongo, args Arguments) error {
+	if *arguments.Namespace == "" || *arguments.ServiceName =="" {
+		return fmt.Errorf("clear-entries expects the namespace and name, these were not provided. %v", args)
+	}
+
+	baseName := fmt.Sprintf("%s.%s", *arguments.Namespace, *arguments.ServiceName)
+	return kongo.DeregisterK8sService(baseName)
+}
+
+func deregisterTestResources(kongo *client.Kongo, args Arguments) error {
 	k8sService := client.K8sService{
 		Addresses: []*string{kong.String("localhost")},
 		Name:      "steve-test-service-one",
@@ -56,14 +84,14 @@ func deregisterTestResources(kongo *client.Kongo, args []string) error {
 		Port:      80,
 	}
 
-	err := kongo.DeregisterK8sService(&k8sService)
+	err := kongo.DeregisterK8sService(k8sService.Name)
 	if err != nil {
 		return fmt.Errorf("None delete the things: %v", err)
 	}
 	return nil
 }
 
-func registerTestResources(kongo *client.Kongo, args []string) error {
+func registerTestResources(kongo *client.Kongo, args Arguments) error {
 	k8sService := client.K8sService{
 		Addresses: []*string{kong.String("localhost")},
 		Name:      "steve-test-service-one",
@@ -81,7 +109,7 @@ func registerTestResources(kongo *client.Kongo, args []string) error {
 	return err
 }
 
-func listAllThings(kongo *client.Kongo, args []string) error {
+func listAllThings(kongo *client.Kongo, args Arguments) error {
 	upstreams, err := kongo.ListUpstreams()
 	if err != nil {
 		return fmt.Errorf("error listing Upstreams: %v", err)
@@ -144,7 +172,7 @@ func printUpstreams(upstreams []*kong.Upstream) {
 	}
 }
 
-func printUsage(kongo *client.Kongo, args []string) error {
+func printUsage(kongo *client.Kongo, args Arguments) error {
 	commands := getCommands()
 	fmt.Println("kongo usage:")
 	fmt.Println("./kongo [command], where command is one of:")
@@ -155,7 +183,7 @@ func printUsage(kongo *client.Kongo, args []string) error {
 	return nil
 }
 
-func truncateKong(kongo *client.Kongo, args []string) error {
+func truncateKong(kongo *client.Kongo, args Arguments) error {
 	err := kongo.DeleteAllTargets()
 	if err != nil {
 		fmt.Println("Error deleting all Targets: ", err)
