@@ -13,9 +13,9 @@ import (
 )
 
 type Arguments struct {
-	KongUri *string
-	Command *string
-	Namespace *string
+	KongUri     *string
+	Command     *string
+	Namespace   *string
 	ServiceName *string
 }
 
@@ -71,7 +71,7 @@ func getCommands() map[string]Command {
 }
 
 func clearEntries(kongo *client.Kongo, args Arguments) error {
-	if *arguments.Namespace == "" || *arguments.ServiceName =="" {
+	if *arguments.Namespace == "" || *arguments.ServiceName == "" {
 		return fmt.Errorf("clear-entries expects the namespace and name, these were not provided. %v", args)
 	}
 
@@ -82,7 +82,7 @@ func clearEntries(kongo *client.Kongo, args Arguments) error {
 func deregisterTestResources(kongo *client.Kongo, args Arguments) error {
 	k8sService := client.K8sService{
 		Addresses: []*string{kong.String("localhost")},
-		Name:      "steve-test-service-one",
+		Name:      "kongo.test-service-one",
 		Path:      "/testing-1-2-3",
 		Port:      80,
 	}
@@ -97,7 +97,7 @@ func deregisterTestResources(kongo *client.Kongo, args Arguments) error {
 func registerTestResources(kongo *client.Kongo, args Arguments) error {
 	k8sService := client.K8sService{
 		Addresses: []*string{kong.String("localhost")},
-		Name:      "steve-test-service-one",
+		Name:      "kongo.test-service-one",
 		Path:      "/testing-1-2-3",
 		Port:      80,
 	}
@@ -113,11 +113,6 @@ func registerTestResources(kongo *client.Kongo, args Arguments) error {
 }
 
 func listAllThings(kongo *client.Kongo, args Arguments) error {
-	jsonize := func(v interface{}) string {
-		json, _ := jsoniter.Marshal(v)
-		return string(json)
-	}
-
 	upstreams, err := kongo.ListUpstreams()
 	if err != nil {
 		return fmt.Errorf("error listing Upstreams: %v", err)
@@ -219,8 +214,13 @@ func askForConfirmation(s string) bool {
 
 		if response == "YES" {
 			return true
-		} else if response == "n" || response == "no" || response == "NO"  {
+		} else if response == "n" || response == "no" || response == "NO" {
 			return false
 		}
 	}
+}
+
+func jsonize(v interface{}) string {
+	json, _ := jsoniter.Marshal(v)
+	return string(json)
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/hbagdi/go-kong/kong"
+	jsoniter "github.com/json-iterator/go"
 	"net/http"
 	"strings"
 )
@@ -219,6 +220,11 @@ type RegisteredKongResources struct {
 	Upstream *kong.Upstream
 }
 
+func String(resources RegisteredKongResources) string {
+	json, _ := jsoniter.Marshal(resources)
+	return string(json)
+}
+
 type KongNames struct {
 	UpstreamName string
 	ServiceName  string
@@ -345,16 +351,18 @@ func (kongo *Kongo) DeregisterK8sService(baseName string) error {
 func (kongo *Kongo) LoadRegisteredKongResources(kongNames *KongNames) (*RegisteredKongResources, error) {
 	registeredKongResources := new(RegisteredKongResources)
 
-	targets, err := kongo.ListTargets(kongNames.UpstreamName)
+	upstream, err := kongo.GetUpstream(kongNames.UpstreamName)
+	if err != nil {
+		return registeredKongResources, fmt.Errorf("error loading Upstream: '%s", kongNames.UpstreamName)
+	}
+
+	registeredKongResources.Upstream = upstream
+
+	targets, err := kongo.ListTargets(*upstream.ID)
 	if err != nil {
 		return nil, fmt.Errorf("error loading Targets for Upstream '%s'", kongNames.UpstreamName)
 	}
 	registeredKongResources.Targets = targets
-
-	registeredKongResources.Upstream, err = kongo.GetUpstream(kongNames.UpstreamName)
-	if err != nil {
-		return registeredKongResources, fmt.Errorf("error loading Upstream: '%s", kongNames.UpstreamName)
-	}
 
 	registeredKongResources.Service, err = kongo.GetService(kongNames.ServiceName)
 	if err != nil {
