@@ -50,7 +50,7 @@ func main() {
 	}
 	err := command.function(kongo, arguments)
 	if err != nil {
-		log.Fatal("Something went horribly, horribly wrong: ", err)
+		log.Fatal("Not so fast: ", err)
 	}
 }
 
@@ -110,21 +110,24 @@ func registerTestResources(kongo *client.Kongo, args Arguments) error {
 }
 
 func listAllThings(kongo *client.Kongo, args Arguments) error {
+	jsonize := func(v interface{}) string {
+		json, _ := jsoniter.Marshal(v)
+		return string(json)
+	}
+
 	upstreams, err := kongo.ListUpstreams()
 	if err != nil {
 		return fmt.Errorf("error listing Upstreams: %v", err)
 	}
 	for _, upstream := range upstreams {
-		output := fmt.Sprintf("Upstream{ Name: %s, ID: %s}", *upstream.Name, *upstream.ID)
-		fmt.Println(output)
+		fmt.Println(jsonize(upstream))
 
 		targets, err := kongo.ListTargets(*upstream.ID)
 		if err != nil {
 			return fmt.Errorf("error listing Targets for Upstream '%s': %v", *upstream.Name, err)
 		}
 		for _, target := range targets {
-			output := fmt.Sprintf("Target{ Target: %s, ID: %s, UpstreamName: %v }", *target.Target, *target.ID, *upstream.Name)
-			fmt.Println(output)
+			fmt.Println(jsonize(target))
 		}
 	}
 
@@ -134,8 +137,7 @@ func listAllThings(kongo *client.Kongo, args Arguments) error {
 	}
 
 	for _, service := range services {
-		output := fmt.Sprintf("Service{ Name: %s, ID: %s, Port: %v }", *service.Name, *service.ID, *service.Port)
-		fmt.Println(output)
+		fmt.Println(jsonize(service))
 	}
 
 	routes, err := kongo.ListRoutes()
@@ -143,18 +145,8 @@ func listAllThings(kongo *client.Kongo, args Arguments) error {
 		return fmt.Errorf("error listing Routes: %v", err)
 	}
 
-	getServiceName := func(route *kong.Route) string {
-		name := "<undefined>"
-		if route.Service.Name != nil {
-			name = *route.Service.Name
-		}
-		return name
-	}
-
 	for _, route := range routes {
-
-		output := fmt.Sprintf("Route{ Name: %s, ID: %s, ServiceName: %v, StripPath: %v}", *route.Name, *route.ID, getServiceName(route), *route.StripPath)
-		fmt.Println(output)
+		fmt.Println(jsonize(route))
 	}
 
 	return nil
