@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"github.com/hbagdi/go-kong/kong"
 	jsoniter "github.com/json-iterator/go"
 	"kongo/client"
 	"log"
+	"os"
+	"strings"
 )
 
 type Arguments struct {
@@ -176,25 +179,48 @@ func printUsage(kongo *client.Kongo, args Arguments) error {
 }
 
 func truncateKong(kongo *client.Kongo, args Arguments) error {
-	err := kongo.DeleteAllTargets()
-	if err != nil {
-		fmt.Println("Error deleting all Targets: ", err)
-	}
+	if askForConfirmation("THIS WILL DELETE ALL KONG ENTRIES, ARE YOU SURE?") {
+		err := kongo.DeleteAllTargets()
+		if err != nil {
+			fmt.Println("Error deleting all Targets: ", err)
+		}
 
-	err = kongo.DeleteAllUpstreams()
-	if err != nil {
-		fmt.Println("Error deleting all Upstreams: ", err)
-	}
+		err = kongo.DeleteAllUpstreams()
+		if err != nil {
+			fmt.Println("Error deleting all Upstreams: ", err)
+		}
 
-	err = kongo.DeleteAllRoutes()
-	if err != nil {
-		fmt.Println("Error deleting all Routes: ", err)
-	}
+		err = kongo.DeleteAllRoutes()
+		if err != nil {
+			fmt.Println("Error deleting all Routes: ", err)
+		}
 
-	err = kongo.DeleteAllServices()
-	if err != nil {
-		fmt.Println("Error deleting all Streams: ", err)
+		err = kongo.DeleteAllServices()
+		if err != nil {
+			fmt.Println("Error deleting all Streams: ", err)
+		}
 	}
 
 	return nil
+}
+
+func askForConfirmation(s string) bool {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Printf("%s [YES/no]: ", s)
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		response = strings.TrimSpace(response)
+
+		if response == "YES" {
+			return true
+		} else if response == "n" || response == "no" || response == "NO"  {
+			return false
+		}
+	}
 }
