@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/hbagdi/go-kong/kong"
 	jsoniter "github.com/json-iterator/go"
-	"kongo/client"
+	"github.com/ciroque/kongo/client"
 	"log"
 	"os"
 	"strings"
